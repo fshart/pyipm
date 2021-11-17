@@ -1,18 +1,18 @@
 from __future__ import print_function
 
-import theano
-import theano.tensor as T
+import aesara
+import aesara.tensor as aet
 import numpy as np
-from theano.tensor.nlinalg import pinv
-from theano.tensor.nlinalg import diag
-from theano.tensor.nlinalg import eigh
-from theano.tensor.slinalg import eigvalsh
-from theano.ifelse import ifelse
+from aesara.tensor.nlinalg import pinv
+from aesara.tensor.basic import diag
+from aesara.tensor.nlinalg import eigh
+from aesara.tensor.slinalg import eigvalsh
+from aesara.ifelse import ifelse
 
 try:
-    FunctionType = theano.compile.function_module.Function
+    FunctionType = aesara.compile.function_module.Function
 except AttributeError:
-    FunctionType = theano.compile.function.types.Function
+    FunctionType = aesara.compile.function.types.Function
 
 
 class IPM:
@@ -26,7 +26,7 @@ class IPM:
            min f(x)   subject to {ce(x) = 0} and {ci(x) >= 0}
             x
 
-         where f(x) is a function of the weights x, {ce(x) = 0} is the set of M 
+         where f(x) is a function of the weights x, {ce(x) = 0} is the set of M
          equality constraints, and {ci(x) <= 0} is the set of N inequality
          constraints. The solver finds a solution to an 'unconstrained'
          transformation of the problem by forming the Lagrangian augmented by a
@@ -41,7 +41,7 @@ class IPM:
          desired precision.
 
          For more details on this algorithm, consult the references at the bottom.
-         In particular, this algorithm uses a line search interior-point 
+         In particular, this algorithm uses a line search interior-point
          algorithm with a merit function based on Ch. 19 of [1].
 
 
@@ -49,11 +49,11 @@ class IPM:
            Required:
              NumPy
              SciPy
-             Theano
+             aesara
            Optional:
              Intel MKL, OpenBlas, ATLAS, or BLAS/LAPACK
              Nvidia's CUDA or OpenCL
-               for more details on support for GPU software, see the Theano
+               for more details on support for GPU software, see the aesara
                documentation.
 
 
@@ -71,13 +71,13 @@ class IPM:
 
 
        Input types:
-           symbolic expression: refers to equations constructed using Theano
+           symbolic expression: refers to equations constructed using aesara
              objects and syntax.
            symbolic scalar/array: is the output of a symbolic expression.
 
        Class Variables:
            x0 (NumPy array): weight initialization (size D).
-           x_dev (Theano tensor): symbolic weight variables.
+           x_dev (aesara tensor): symbolic weight variables.
            f (symbolic expression): objective/cost function; i.e. the function to be
                  minimized.
                [Args] x_dev
@@ -97,42 +97,42 @@ class IPM:
                  of f wrt x_dev
                [Returns] symbolic array (size DxD)
                [NOTE] see notes 1) and 3) below.
-           ce (Theano expression, OPTIONAL): symbolic expression for the equality
+           ce (aesara expression, OPTIONAL): symbolic expression for the equality
                  constraints as a function of x_dev. This is required if dce or
                  d2ce is not None.
                [Args] x_dev
                [Default] None
                [Returns] symbolic array (size M)
                [NOTE] see note 1) below.
-           dce (Theano expression, OPTIONAL): symbolic expression for the Jacobian
+           dce (aesara expression, OPTIONAL): symbolic expression for the Jacobian
                  of the equality constraints wrt x_dev.
                [Args] x_dev
                [Default] if ce is not None, then dce is assigned through automatic
                  symbolic differentiation of ce wrt x_dev; otherwise None.
                [Returns] symbolic array (size DxM)
                [NOTE] see notes 1) and 2) below.
-           d2ce (Theano expression, OPTIONAL): symbolic expression for the Hessian
+           d2ce (aesara expression, OPTIONAL): symbolic expression for the Hessian
                  of the equality constraints wrt x_dev and lambda_dev (see below).
                [Args] x_dev, lambda_dev
                [Default] if ce is not None, then d2ce is assigned through automatic
                  symbolic differentiation of ce wrt x_dev; otherwise None.
                [Returns] symbolic array (size DxD)
                [NOTE] see notes 1) and 3) below.
-           ci (Theano expression, OPTIONAL): symbolic expression for the
+           ci (aesara expression, OPTIONAL): symbolic expression for the
                  inequality constraints as a function of x_dev. Required if dci or
                  d2ci are not None.
                [Args] x_dev
                [Default] None
                [Returns] symbolic array (size N)
                [NOTE] see note 1) below.
-           dci (Theano expression, OPTIONAL): symbolic expression for the Jacobian 
+           dci (aesara expression, OPTIONAL): symbolic expression for the Jacobian
                  of the inequality constraints wrt x_dev.
                [Args] x_dev
                [Default] if ci is not None, then dci is assigned through automatic
                  symbolic differentiation of ci wrt x_dev; otherwise None
                [Returns] symbolic array (size DxN)
                [NOTE] see notes 1) and 2) below.
-           d2ci (Theano expression, OPTIONAL): symbolic expression for the Hessian
+           d2ci (aesara expression, OPTIONAL): symbolic expression for the Hessian
                  of the inequality constraints wrt x_dev and lambda_dev (see below).
                [Args] x_dev, lambda_dev
                [Default] if ci is not None, then d2ci is assigned through autormatic
@@ -145,7 +145,7 @@ class IPM:
                [Default] if ce or ci is not None, then lda0 is initialized using dce
                  (if ce is not None), dci (if ci is not None), and df all evaluated
                  at x0 and the Moore-Penrose pseudoinverse; otherwise None
-           lambda_dev (Theano expression, OPTIONAL) symbolic Lagrange multipliers.
+           lambda_dev (aesara expression, OPTIONAL) symbolic Lagrange multipliers.
                  This only required if you supply your own input for d2ce or d2ci.
                [Default] None
            s0 (NumPy array, OPTIONAL): slack variables initialization (size N).
@@ -211,12 +211,12 @@ class IPM:
            1) For flexibility, symbolic expressions for f, df, d2f, ce, dce, d2ce, ci
            dci, and d2ci may be replaced with functions. Keep in mind, however, that
            replacing f, ce, or ci with functions will disable automatic
-           differentiation capabilities. This option is available for those who wish 
-           to avoid redefining Theano functions that have already been compiled.
+           differentiation capabilities. This option is available for those who wish
+           to avoid redefining aesara functions that have already been compiled.
            However, using symbolic expressions may lead to a quicker optimization.
-           
+
            2) When defining your own Jacobians, dce and dci, keep in mind that dce and
-           dci are transposed relative to the output of Theano.gradient.jacobian()
+           dci are transposed relative to the output of aesara.gradient.jacobian()
            and should be size DxM or DxN, respectively.
 
            3) Depending on the sophistication of the problem you wish to optimize, it
@@ -240,7 +240,7 @@ class IPM:
                    constraints if x0 is uninitialized, N (scalar)
                [NOTE] If the user runs compile on an instance of the
                  solver object and then intends to reuse the solver object after
-                 changing the symbolic Theano expressions defined in the Class 
+                 changing the symbolic aesara expressions defined in the Class
                  Variables section, compile will need to be rerun to
                  compile any modified/new expressions.
            solve(x0=None, s0=None, lda0=None, force_recompile=False): run the interior
@@ -282,14 +282,14 @@ class IPM:
                  * kkt3 (NumPy array, size M) is the equality constraint satisfaction
                    (i.e. solve ce at x); if there are no equality constraints, then
                    kkt3=0
-                 * kkt4 (NumPy array, size N) is the inequality constraint 
+                 * kkt4 (NumPy array, size N) is the inequality constraint
                    satisfaction (i.e. solve ci at x); if there are inequality
                    constraints, then kkt=0
                [NOTE] All arguments are required. If s and/or lda are irrelevant to
                  the user's problem, set those variables to a 0 dimensional NumPy
                  array.
-        
-        
+
+
        References:
            [1] Nocedal J & Wright SJ, 'Numerical Optimization', 2nd Ed. Springer (2006).
            [2] Byrd RH, Nocedal J, & Schnabel RB, 'Representations of quasi-Newton
@@ -298,9 +298,9 @@ class IPM:
            [3] Wachter A & Biegler LT, 'On the implementation of an interior-point
                  filter line-search algorithm for large-scale nonlinear programming',
                  Mathematical programming, 106(1), 25-57 (2006).
-        
 
-           TO DO: Translate line-search into Theano
+
+           TO DO: Translate line-search into aesara
     """
 
     def __init__(self, x0=None, x_dev=None, f=None, df=None, d2f=None, ce=None, dce=None, d2ce=None, ci=None, dci=None,
@@ -355,12 +355,12 @@ class IPM:
         self.lbfgs_fail_max = lbfgs
 
         self.float_dtype = float_dtype
-        self.nu_dev = theano.shared(self.float_dtype(self.nu), name='nu_dev')
-        self.mu_dev = theano.shared(self.float_dtype(self.mu), name='mu_dev')
-        self.dz_dev = T.vector('dz_dev')
-        self.b_dev = T.matrix('b_dev')
-        self.M_dev = T.matrix('M_dev')
-        self.s_dev = T.vector('s_dev')
+        self.nu_dev = aesara.shared(self.float_dtype(self.nu), name='nu_dev')
+        self.mu_dev = aesara.shared(self.float_dtype(self.mu), name='mu_dev')
+        self.dz_dev = aet.vector('dz_dev')
+        self.b_dev = aet.matrix('b_dev')
+        self.M_dev = aet.matrix('M_dev')
+        self.s_dev = aet.vector('s_dev')
 
         self.verbosity = verbosity
 
@@ -372,7 +372,7 @@ class IPM:
 
     @staticmethod
     def check_precompile(func):
-        """Check if the Theano expression is actually a Theano function. If so,
+        """Check if the aesara expression is actually a aesara function. If so,
            return True, otherwise return False.
         """
         return isinstance(func, FunctionType)
@@ -437,7 +437,7 @@ class IPM:
             if ce_precompile:
                 CE = self.ce
             else:
-                CE = theano.function(inputs=[self.x_dev], outputs=self.ce)
+                CE = aesara.function(inputs=[self.x_dev], outputs=self.ce)
 
             c = CE(self.x0)
             self.neq = c.size
@@ -450,7 +450,7 @@ class IPM:
             if ci_precompile:
                 CI = self.ci
             else:
-                CI = theano.function(inputs=[self.x_dev], outputs=self.ci)
+                CI = aesara.function(inputs=[self.x_dev], outputs=self.ci)
 
             c = CI(self.x0)
             self.nineq = c.size
@@ -461,83 +461,83 @@ class IPM:
 
         # declare device variables
         if self.lambda_dev is None:
-            self.lambda_dev = T.vector('lamda_dev')
+            self.lambda_dev = aet.vector('lamda_dev')
 
         # use automatic differentiation if gradient and/or Hessian (if applicable) of f expressions are not provided
         if self.df is None:
-            df = T.grad(self.f, self.x_dev)
+            df = aet.grad(self.f, self.x_dev)
         else:
             df = self.df
         if not self.lbfgs and self.d2f is None:
-            d2f = theano.gradient.hessian(cost=self.f, wrt=self.x_dev)
+            d2f = aesara.gradient.hessian(cost=self.f, wrt=self.x_dev)
         else:
             d2f = self.d2f
 
         # construct expression for the constraint Jacobians and Hessians (if exact Hessian is used)
         if self.neq:
             if self.dce is None:
-                dce = theano.gradient.jacobian(self.ce, wrt=self.x_dev).reshape((self.neq, self.nvar)).T
+                dce = aesara.gradient.jacobian(self.ce, wrt=self.x_dev).reshape((self.neq, self.nvar)).T
             else:
                 dce = self.dce
             if not self.lbfgs:
                 if self.d2ce is None:
-                    d2ce = theano.gradient.hessian(cost=T.sum(self.ce * self.lambda_dev[:self.neq]), wrt=self.x_dev)
+                    d2ce = aesara.gradient.hessian(cost=aet.sum(self.ce * self.lambda_dev[:self.neq]), wrt=self.x_dev)
                 else:
                     d2ce = self.d2ce
 
         if self.nineq:
             Sigma = diag(self.lambda_dev[self.neq:] / (self.s_dev + self.eps))
             if self.dci is None:
-                dci = theano.gradient.jacobian(self.ci, wrt=self.x_dev).reshape((self.nineq, self.nvar)).T
+                dci = aesara.gradient.jacobian(self.ci, wrt=self.x_dev).reshape((self.nineq, self.nvar)).T
             else:
                 dci = self.dci
             if not self.lbfgs:
                 if self.d2ci is None:
-                    d2ci = theano.gradient.hessian(cost=T.sum(self.ci * self.lambda_dev[self.neq:]), wrt=self.x_dev)
+                    d2ci = aesara.gradient.hessian(cost=aet.sum(self.ci * self.lambda_dev[self.neq:]), wrt=self.x_dev)
                 else:
                     d2ci = self.d2ci
 
         # if some expressions have been precompiled into functions, compile any remaining expressions
         if precompile:
             if not f_precompile:
-                f_func = theano.function(inputs=[self.x_dev], outputs=self.f)
+                f_func = aesara.function(inputs=[self.x_dev], outputs=self.f)
             else:
                 f_func = self.f
             if not df_precompile:
-                df_func = theano.function(inputs=[self.x_dev], outputs=df)
+                df_func = aesara.function(inputs=[self.x_dev], outputs=df)
             else:
                 df_func = df
             if not self.lbfgs:
                 if not d2f_precompile:
-                    d2f_func = theano.function(inputs=[self.x_dev], outputs=d2f)
+                    d2f_func = aesara.function(inputs=[self.x_dev], outputs=d2f)
                 else:
                     d2f_func = d2f
             if self.neq:
                 if not ce_precompile:
-                    ce_func = theano.function(inputs=[self.x_dev], outputs=self.ce)
+                    ce_func = aesara.function(inputs=[self.x_dev], outputs=self.ce)
                 else:
                     ce_func = self.ce
                 if not dce_precompile:
-                    dce_func = theano.function(inputs=[self.x_dev], outputs=dce.reshape((self.nvar, self.neq)))
+                    dce_func = aesara.function(inputs=[self.x_dev], outputs=dce.reshape((self.nvar, self.neq)))
                 else:
                     dce_func = lambda x: dce(x).reshape((self.nvar, self.neq))
                 if not self.lbfgs:
                     if not d2ce_precompile:
-                        d2ce_func = theano.function(inputs=[self.x_dev, self.lambda_dev], outputs=d2ce)
+                        d2ce_func = aesara.function(inputs=[self.x_dev, self.lambda_dev], outputs=d2ce)
                     else:
                         d2ce_func = d2ce
             if self.nineq:
                 if not ci_precompile:
-                    ci_func = theano.function(inputs=[self.x_dev, self.s_dev], outputs=self.ci - self.s_dev)
+                    ci_func = aesara.function(inputs=[self.x_dev, self.s_dev], outputs=self.ci - self.s_dev)
                 else:
                     ci_func = lambda x, s: self.ci(x) - s
                 if not dci_precompile:
-                    dci_func = theano.function(inputs=[self.x_dev], outputs=dci.reshape((self.nvar, self.nineq)))
+                    dci_func = aesara.function(inputs=[self.x_dev], outputs=dci.reshape((self.nvar, self.nineq)))
                 else:
                     dci_func = lambda x: dci(x).reshape((self.nvar, self.nineq))
                 if not self.lbfgs:
                     if not d2ci_precompile:
-                        d2ci_func = theano.function(inputs=[self.x_dev, self.lambda_dev], outputs=d2ci)
+                        d2ci_func = aesara.function(inputs=[self.x_dev, self.lambda_dev], outputs=d2ci)
                     else:
                         d2ci_func = d2ci
 
@@ -552,11 +552,11 @@ class IPM:
                 else:
                     con = lambda x, s: ci_func(x, s).reshape((self.nineq,))
             else:
-                con = T.zeros((self.neq + self.nineq,))
+                con = aet.zeros((self.neq + self.nineq,))
                 if self.neq:
-                    con = T.set_subtensor(con[:self.neq], self.ce)
+                    con = aet.set_subtensor(con[:self.neq], self.ce)
                 if self.nineq:
-                    con = T.set_subtensor(con[self.neq:], self.ci - self.s_dev)
+                    con = aet.set_subtensor(con[self.neq:], self.ci - self.s_dev)
 
         # construct composite expression for the constraints Jacobian
         if self.neq or self.nineq:
@@ -574,12 +574,12 @@ class IPM:
                         -np.eye(self.nineq)
                     ], axis=0)
             else:
-                jaco = T.zeros((self.nvar + self.nineq, self.neq + self.nineq))
+                jaco = aet.zeros((self.nvar + self.nineq, self.neq + self.nineq))
                 if self.neq:
-                    jaco = T.set_subtensor(jaco[:self.nvar, :self.neq], dce)
+                    jaco = aet.set_subtensor(jaco[:self.nvar, :self.neq], dce)
                 if self.nineq:
-                    jaco = T.set_subtensor(jaco[:self.nvar, self.neq:], dci)
-                    jaco = T.set_subtensor(jaco[self.nvar:, self.neq:], -T.eye(self.nineq))
+                    jaco = aet.set_subtensor(jaco[:self.nvar, self.neq:], dci)
+                    jaco = aet.set_subtensor(jaco[self.nvar:, self.neq:], -aet.eye(self.nineq))
 
         # construct expression for the gradient
         if precompile:
@@ -595,21 +595,21 @@ class IPM:
 
             if self.nineq:
                 grad_s = self.lambda_dev[self.neq:] - self.mu_dev / (self.s_dev + self.eps)
-                grad_s = theano.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev], outputs=grad_s,
+                grad_s = aesara.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev], outputs=grad_s,
                                          on_unused_input='ignore')
 
             if self.neq:
                 if ce_precompile:
                     grad_lda_eq = lambda x: ce_func(x).ravel()
                 else:
-                    grad_lda_eq = theano.function(inputs=[self.x_dev], outputs=self.ce.ravel(),
+                    grad_lda_eq = aesara.function(inputs=[self.x_dev], outputs=self.ce.ravel(),
                                                   on_unused_input='ignore')
 
             if self.nineq:
                 if ci_precompile:
                     grad_lda_ineq = lambda x, s: ci_func(x, s).ravel()
                 else:
-                    grad_lda_ineq = theano.function(inputs=[self.x_dev, self.s_dev],
+                    grad_lda_ineq = aesara.function(inputs=[self.x_dev, self.s_dev],
                                                     outputs=(self.ci - self.s_dev).ravel(), on_unused_input='ignore')
 
             if self.neq and self.nineq:
@@ -623,22 +623,22 @@ class IPM:
             else:
                 grad = lambda x, s, lda: grad_x(x, lda)
         else:
-            grad = T.zeros((self.nvar + 2 * self.nineq + self.neq,))
-            grad = T.set_subtensor(grad[:self.nvar], df)
+            grad = aet.zeros((self.nvar + 2 * self.nineq + self.neq,))
+            grad = aet.set_subtensor(grad[:self.nvar], df)
             if self.neq:
-                grad = T.inc_subtensor(grad[:self.nvar], -T.dot(dce, self.lambda_dev[:self.neq]))
-                grad = T.set_subtensor(grad[self.nvar + self.nineq:self.nvar + self.nineq + self.neq], self.ce)
+                grad = aet.inc_subtensor(grad[:self.nvar], -aet.dot(dce, self.lambda_dev[:self.neq]))
+                grad = aet.set_subtensor(grad[self.nvar + self.nineq:self.nvar + self.nineq + self.neq], self.ce)
             if self.nineq:
-                grad = T.inc_subtensor(grad[:self.nvar], -T.dot(dci, self.lambda_dev[self.neq:]))
-                grad = T.set_subtensor(grad[self.nvar:self.nvar + self.nineq], self.lambda_dev[self.neq:] -
+                grad = aet.inc_subtensor(grad[:self.nvar], -aet.dot(dci, self.lambda_dev[self.neq:]))
+                grad = aet.set_subtensor(grad[self.nvar:self.nvar + self.nineq], self.lambda_dev[self.neq:] -
                                        self.mu_dev / (self.s_dev + self.eps))
-                grad = T.set_subtensor(grad[self.nvar + self.nineq + self.neq:], self.ci - self.s_dev)
+                grad = aet.set_subtensor(grad[self.nvar + self.nineq + self.neq:], self.ci - self.s_dev)
 
         # construct expressions for the merit function
         if precompile:
             if self.nineq:
-                bar_func = self.mu_dev * T.sum(T.log(self.s_dev))
-                bar_func = theano.function(inputs=[self.s_dev], outputs=bar_func, on_unused_input='ignore')
+                bar_func = self.mu_dev * aet.sum(aet.log(self.s_dev))
+                bar_func = aesara.function(inputs=[self.s_dev], outputs=bar_func, on_unused_input='ignore')
             if self.neq and self.nineq:
                 phi = lambda x, s: (f_func(x) + self.nu_dev.get_value() *
                                     (np.sum(np.abs(ce_func(x))) + np.sum(np.abs(ci_func(x, s)))) - bar_func(s))
@@ -651,15 +651,15 @@ class IPM:
         else:
             phi = self.f
             if self.neq:
-                phi += self.nu_dev * T.sum(T.abs_(self.ce))
+                phi += self.nu_dev * aet.sum(aet.abs_(self.ce))
             if self.nineq:
-                phi += self.nu_dev * T.sum(T.abs_(self.ci - self.s_dev)) - self.mu_dev * T.sum(T.log(self.s_dev))
+                phi += self.nu_dev * aet.sum(aet.abs_(self.ci - self.s_dev)) - self.mu_dev * aet.sum(aet.log(self.s_dev))
 
         # construct expressions for the merit function gradient
         if precompile:
             if self.nineq:
-                dbar_func = T.dot(self.mu_dev / (self.s_dev + self.eps), self.dz_dev[self.nvar:])
-                dbar_func = theano.function(inputs=[self.s_dev, self.dz_dev], outputs=dbar_func,
+                dbar_func = aet.dot(self.mu_dev / (self.s_dev + self.eps), self.dz_dev[self.nvar:])
+                dbar_func = aesara.function(inputs=[self.s_dev, self.dz_dev], outputs=dbar_func,
                                             on_unused_input='ignore')
             if self.neq and self.nineq:
                 dphi = lambda x, s, dz: (np.dot(df_func(x), dz[:self.nvar]) - self.nu_dev.get_value() *
@@ -674,12 +674,12 @@ class IPM:
             else:
                 dphi = lambda x, s, dz: np.dot(df_func(x), dz[:self.nvar])
         else:
-            dphi = T.dot(df, self.dz_dev[:self.nvar])
+            dphi = aet.dot(df, self.dz_dev[:self.nvar])
             if self.neq:
-                dphi -= self.nu_dev * T.sum(T.abs_(self.ce))
+                dphi -= self.nu_dev * aet.sum(aet.abs_(self.ce))
             if self.nineq:
-                dphi -= (self.nu_dev * T.sum(T.abs_(self.ci - self.s_dev)) +
-                         T.dot(self.mu_dev / (self.s_dev + self.eps), self.dz_dev[self.nvar:]))
+                dphi -= (self.nu_dev * aet.sum(aet.abs_(self.ci - self.s_dev)) +
+                         aet.dot(self.mu_dev / (self.s_dev + self.eps), self.dz_dev[self.nvar:]))
 
         # construct expression for initializing the Lagrange multipliers
         if self.neq or self.nineq:
@@ -687,7 +687,7 @@ class IPM:
                 init_lambda = lambda x: np.dot(np.linalg.pinv(jaco(x)[:self.nvar, :]),
                                                df_func(x).reshape((self.nvar, 1))).reshape((self.neq + self.nineq,))
             else:
-                init_lambda = T.dot(pinv(jaco[:self.nvar, :]),
+                init_lambda = aet.dot(pinv(jaco[:self.nvar, :]),
                                     df.reshape((self.nvar, 1))).reshape((self.neq + self.nineq,))
 
         # construct expression for initializing the slack variables
@@ -698,24 +698,24 @@ class IPM:
                     self.Ktol * np.ones((self.nineq, 1))
                 ], axis=1), axis=1)
             else:
-                init_slack = T.max(T.concatenate([
+                init_slack = aet.max(aet.concatenate([
                     self.ci.reshape((self.nineq, 1)),
-                    self.Ktol * T.ones((self.nineq, 1))
+                    self.Ktol * aet.ones((self.nineq, 1))
                 ], axis=1), axis=1)
 
         # construct expression for gradient of f( + the barrier function)
         if precompile:
             if self.nineq:
                 dbar_func2 = -self.mu_dev / (self.s_dev + self.eps)
-                dbar_func2 = theano.function(inputs=[self.s_dev], outputs=dbar_func2, on_unused_input='ignore')
+                dbar_func2 = aesara.function(inputs=[self.s_dev], outputs=dbar_func2, on_unused_input='ignore')
                 barrier_cost_grad = lambda x, s: np.concatenate([df_func(x), dbar_func2(s)], axis=0)
             else:
                 barrier_cost_grad = lambda x, s: df_func(x)
         else:
-            barrier_cost_grad = T.zeros((self.nvar + self.nineq,))
-            barrier_cost_grad = T.set_subtensor(barrier_cost_grad[:self.nvar], df)
+            barrier_cost_grad = aet.zeros((self.nvar + self.nineq,))
+            barrier_cost_grad = aet.set_subtensor(barrier_cost_grad[:self.nvar], df)
             if self.nineq:
-                barrier_cost_grad = T.set_subtensor(barrier_cost_grad[self.nvar:],
+                barrier_cost_grad = aet.set_subtensor(barrier_cost_grad[self.nvar:],
                                                     -self.mu_dev / (self.s_dev + self.eps))
 
         # construct expression for the Hessian of the Lagrangian (assumes Lagrange multipliers included in
@@ -769,29 +769,29 @@ class IPM:
                     d2L -= d2ci
 
                 # construct expression for the symmetric Hessian matrix
-                hess = T.zeros((self.nvar + 2 * self.nineq + self.neq, self.nvar + 2 * self.nineq + self.neq))
-                hess = T.set_subtensor(hess[:self.nvar, :self.nvar], T.triu(d2L))
+                hess = aet.zeros((self.nvar + 2 * self.nineq + self.neq, self.nvar + 2 * self.nineq + self.neq))
+                hess = aet.set_subtensor(hess[:self.nvar, :self.nvar], aet.triu(d2L))
                 if self.neq:
-                    hess = T.set_subtensor(
+                    hess = aet.set_subtensor(
                         hess[:self.nvar, (self.nvar + self.nineq):(self.nvar + self.nineq + self.neq)],
                         dce
                     )
                 if self.nineq:
-                    hess = T.set_subtensor(hess[:self.nvar, (self.nvar + self.nineq + self.neq):], dci)
-                    hess = T.set_subtensor(hess[self.nvar:(self.nvar + self.nineq), self.nvar:(self.nvar + self.nineq)],
-                                           Sigma)  # T.triu(Sigma))
-                    hess = T.set_subtensor(
+                    hess = aet.set_subtensor(hess[:self.nvar, (self.nvar + self.nineq + self.neq):], dci)
+                    hess = aet.set_subtensor(hess[self.nvar:(self.nvar + self.nineq), self.nvar:(self.nvar + self.nineq)],
+                                           Sigma)  # aet.triu(Sigma))
+                    hess = aet.set_subtensor(
                         hess[self.nvar:(self.nvar + self.nineq), (self.nvar + self.nineq + self.neq):],
-                        -T.eye(self.nineq)
+                        -aet.eye(self.nineq)
                     )
-                hess = T.triu(hess) + T.triu(hess).T
-                hess = hess - T.diag(T.diagonal(hess) / 2.0)
+                hess = aet.triu(hess) + aet.triu(hess).T
+                hess = hess - aet.diag(aet.diagonal(hess) / 2.0)
 
         # construct expression for general linear system solve
-        # gen_solve = T.slinalg.solve(self.M_dev, self.b_dev)
+        # gen_solve = aet.slinalg.solve(self.M_dev, self.b_dev)
 
         # construct expression for symmetric linear system solve
-        sym_solve = T.slinalg.Solve(A_structure='symmetric')
+        sym_solve = aet.slinalg.Solve(A_structure='symmetric')
         sym_solve = sym_solve(self.M_dev, self.b_dev)
 
         # if using L-BFGS, get the expression for the descent direction
@@ -802,27 +802,27 @@ class IPM:
         if precompile:
             self.cost = f_func
         else:
-            self.cost = theano.function(inputs=[self.x_dev], outputs=self.f)
+            self.cost = aesara.function(inputs=[self.x_dev], outputs=self.f)
 
         if precompile:
             self.barrier_cost_grad = barrier_cost_grad
         else:
-            self.barrier_cost_grad = theano.function(inputs=[self.x_dev, self.s_dev],
+            self.barrier_cost_grad = aesara.function(inputs=[self.x_dev, self.s_dev],
                                                      outputs=barrier_cost_grad, on_unused_input='ignore')
 
         if precompile:
             self.grad = grad
         else:
-            self.grad = theano.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev],
+            self.grad = aesara.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev],
                                         outputs=grad, on_unused_input='ignore')
 
         if self.lbfgs:
-            self.lbfgs_dir_func = theano.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev, self.g_dev,
+            self.lbfgs_dir_func = aesara.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev, self.g_dev,
                                                           self.zeta_dev, self.S_dev, self.Y_dev, self.SS_dev,
                                                           self.L_dev, self.D_dev, self.B_dev],
                                                   outputs=dz, on_unused_input='ignore')
             if dz_sqr is not None:
-                self.lbfgs_dir_func_sqr = theano.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev, self.g_dev,
+                self.lbfgs_dir_func_sqr = aesara.function(inputs=[self.x_dev, self.s_dev, self.lambda_dev, self.g_dev,
                                                                   self.zeta_dev, self.s_dev, self.Y_dev, self.SS_dev,
                                                                   self.L_dev, self.D_dev, self.B_dev],
                                                           outputs=dz_sqr, on_unused_input='ignore')
@@ -830,7 +830,7 @@ class IPM:
             if precompile:
                 self.hess = hess
             else:
-                self.hess = theano.function(
+                self.hess = aesara.function(
                     inputs=[self.x_dev, self.s_dev, self.lambda_dev],
                     outputs=hess, on_unused_input='ignore'
                 )
@@ -838,7 +838,7 @@ class IPM:
         if precompile:
             self.phi = phi
         else:
-            self.phi = theano.function(
+            self.phi = aesara.function(
                 inputs=[self.x_dev, self.s_dev],
                 outputs=phi, on_unused_input='ignore'
             )
@@ -846,22 +846,22 @@ class IPM:
         if precompile:
             self.dphi = dphi
         else:
-            self.dphi = theano.function(
+            self.dphi = aesara.function(
                 inputs=[self.x_dev, self.s_dev, self.dz_dev],
                 outputs=dphi, on_unused_input='ignore'
             )
 
-        self.eigh = theano.function(
+        self.eigh = aesara.function(
             inputs=[self.M_dev],
-            outputs=eigvalsh(self.M_dev, T.eye(self.M_dev.shape[0])),
+            outputs=eigvalsh(self.M_dev, aet.eye(self.M_dev.shape[0])),
         )
 
-        self.sym_solve = theano.function(
+        self.sym_solve = aesara.function(
             inputs=[self.M_dev, self.b_dev],
             outputs=sym_solve,
         )
 
-        # self.gen_solve = theano.function(
+        # self.gen_solve = aesara.function(
         #    inputs=[self.M_dev, self.b_dev],
         #    outputs=gen_solve,
         # )
@@ -870,7 +870,7 @@ class IPM:
             if precompile:
                 self.con = con
             else:
-                self.con = theano.function(
+                self.con = aesara.function(
                     inputs=[self.x_dev, self.s_dev],
                     outputs=con, on_unused_input='ignore'
                 )
@@ -878,7 +878,7 @@ class IPM:
             if precompile:
                 self.jaco = jaco
             else:
-                self.jaco = theano.function(
+                self.jaco = aesara.function(
                     inputs=[self.x_dev],
                     outputs=jaco,
                     on_unused_input='ignore',
@@ -887,7 +887,7 @@ class IPM:
             if precompile:
                 self.init_lambda = init_lambda
             else:
-                self.init_lambda = theano.function(
+                self.init_lambda = aesara.function(
                     inputs=[self.x_dev],
                     outputs=init_lambda,
                 )
@@ -896,7 +896,7 @@ class IPM:
             if precompile:
                 self.init_slack = init_slack
             else:
-                self.init_slack = theano.function(
+                self.init_slack = aesara.function(
                     inputs=[self.x_dev],
                     outputs=init_slack,
                 )
@@ -953,31 +953,31 @@ class IPM:
         return zeta, S, Y, SS, L, D, lbfgs_fail
 
     def lbfgs_builder(self):
-        """Build the L-BFGS search direction calculation in Theano.
+        """Build the L-BFGS search direction calculation in aesara.
         """
         # gradient vector
-        self.g_dev = T.vector('self.g_dev')
+        self.g_dev = aet.vector('self.g_dev')
 
         # initial guess of Hessian
-        self.zeta_dev = T.scalar('self.zeta_dev')
+        self.zeta_dev = aet.scalar('self.zeta_dev')
 
         # storage arrays
-        self.S_dev = T.matrix('S_dev')
-        self.Y_dev = T.matrix('Y_dev')
-        self.SS_dev = T.matrix('SS_dev')
-        self.L_dev = T.matrix('L_dev')
-        self.D_dev = T.matrix('D_dev')
+        self.S_dev = aet.matrix('S_dev')
+        self.Y_dev = aet.matrix('Y_dev')
+        self.SS_dev = aet.matrix('SS_dev')
+        self.L_dev = aet.matrix('L_dev')
+        self.D_dev = aet.matrix('D_dev')
 
         # Jacobian transposed
         if self.neq or self.nineq:
-            self.B_dev = T.matrix('B_dev')
+            self.B_dev = aet.matrix('B_dev')
         else:
-            self.B_dev = T.scalar('B_dev')
+            self.B_dev = aet.scalar('B_dev')
 
         # get the current number of L-BFGS updates
         m_lbfgs = self.S_dev.shape[1]
 
-        sym_solve = T.slinalg.Solve(A_structure='symmetric')
+        sym_solve = aet.slinalg.Solve(A_structure='symmetric')
 
         if self.neq or self.nineq:
             # For constrained problems, the search direction is
@@ -988,11 +988,11 @@ class IPM:
             #          _                         _     _         _   _             _        _                 _
             #         | zeta*I,   0,    dce,  dci |   | zeta*S, Y |*| zeta*S^T*S, L |^(-1)*| zeta*S^T, 0, 0, 0 |
             #     H = |    0,   Sigma,   0,   -I  | _ |    0,   0 | |_   L^T,    -D_|      |_  Y^T,    0, 0, 0_|
-            #         |   -I,     0,  -eta*I,  0  |   |    0,   0 |                        
-            #         |_ dce^T, dci^T,   0,    0 _|   |_   0,   0_|                        
+            #         |   -I,     0,  -eta*I,  0  |   |    0,   0 |
+            #         |_ dce^T, dci^T,   0,    0 _|   |_   0,   0_|
             #          _                         _     _ _          _            _
             #         |       A.            B     |   | W |*M^(-1)*|_W^T, 0, 0, 0_|
-            #       = |                           | _ | 0 |                         = Z - U*M^(-1)*U^T.
+            #       = |                           | _ | 0 |                         = Z - U*M^(-1)*U^aet.
             #         |      B^T,           D     |   | 0 |
             #         |_                         _|   |_0_|
             #
@@ -1001,10 +1001,10 @@ class IPM:
             #     H^(-1) = Z^(-1) - Z^(-1)*U*(U^T*Z^(-1)*U - M)^(-1)*U^T*Z^(-1).
 
             # construct diagonal of 'A'
-            Adiag = self.zeta_dev * T.ones((self.nvar, 1))
+            Adiag = self.zeta_dev * aet.ones((self.nvar, 1))
             if self.nineq:
                 Sigma = (self.lambda_dev[self.neq:] / (self.s_dev + self.eps)).reshape((self.nineq, 1))
-                Adiag = T.concatenate([Adiag, Sigma], axis=0)
+                Adiag = aet.concatenate([Adiag, Sigma], axis=0)
 
             if self.nvar + self.nineq == self.neq + self.nineq:
                 # Jacobian is square and full-rank
@@ -1013,71 +1013,71 @@ class IPM:
                 v01 = sym_solve(self.B_dev, self.g_dev[:self.nvar + self.nineq].reshape((self.neq + self.nineq, 1)))
                 v02 = sym_solve(self.B_dev.T, self.g_dev[self.nvar + self.nineq:].reshape((self.neq + self.nineq, 1)))
                 v03 = -Adiag * sym_solve(self.B_dev, v02)
-                Zg = T.concatenate([v02, v01 + v03], axis=0)
+                Zg = aet.concatenate([v02, v01 + v03], axis=0)
 
                 # construct U
-                W = T.concatenate([self.zeta_dev * self.S_dev, self.Y_dev], axis=1)
+                W = aet.concatenate([self.zeta_dev * self.S_dev, self.Y_dev], axis=1)
                 if self.nineq:
-                    W = T.concatenate([W, T.zeros((self.nineq, 2 * m_lbfgs))], axis=0)
+                    W = aet.concatenate([W, aet.zeros((self.nineq, 2 * m_lbfgs))], axis=0)
 
                 # calculate -Z^(-1)*U*(U^T*Z^(-1)*U - M)^(-1)*U^T*Z^(-1)*g (skipped if m_lbgs=0)
                 invB_W = sym_solve(self.B_dev, W)
-                M0 = T.concatenate([self.zeta_dev * self.SS_dev, self.L_dev], axis=1)
-                M1 = T.concatenate([self.L_dev.T, -self.D_dev], axis=1)
-                Minv = T.concatenate([M0, M1], axis=0)
-                v10 = T.dot(W.T, Zg[:self.nvar + self.nineq])
+                M0 = aet.concatenate([self.zeta_dev * self.SS_dev, self.L_dev], axis=1)
+                M1 = aet.concatenate([self.L_dev.T, -self.D_dev], axis=1)
+                Minv = aet.concatenate([M0, M1], axis=0)
+                v10 = aet.dot(W.T, Zg[:self.nvar + self.nineq])
                 v11 = -sym_solve(Minv, v10)
-                X10 = T.concatenate([T.zeros((self.nvar + self.nineq, 2 * m_lbfgs)), invB_W], axis=0)
-                XZg = T.dot(X10, v11)
+                X10 = aet.concatenate([aet.zeros((self.nvar + self.nineq, 2 * m_lbfgs)), invB_W], axis=0)
+                XZg = aet.dot(X10, v11)
 
                 # combine -Z^(-1)*g and -Z^(-1)*U*(U^T*Z^(-1)*U - M)^(-1)*U^T*Z^(-1)*g
-                dz_sqr = ifelse(T.gt(m_lbfgs, 0), Zg - XZg, Zg)
+                dz_sqr = ifelse(aet.gt(m_lbfgs, 0), Zg - XZg, Zg)
 
             # Jacobian is not square or is rank-deficient
 
             # calculate some basic matrices from Z^(-1)
             BT_invA = self.B_dev.T
-            BT_invA = T.dot(BT_invA, diag(1.0 / Adiag.reshape((Adiag.size,))))
-            BT_invA_B = T.dot(BT_invA, self.B_dev)
+            BT_invA = aet.dot(BT_invA, diag(1.0 / Adiag.reshape((Adiag.size,))))
+            BT_invA_B = aet.dot(BT_invA, self.B_dev)
 
             if self.neq:
                 # regularize if the equality constraints Jacobian is ill-conditioned
                 w = eigh(BT_invA_B[:self.neq, :self.neq])[0]
-                rcond = T.min(T.abs_(w)) / T.max(T.abs_(w))
+                rcond = aet.min(aet.abs_(w)) / aet.max(aet.abs_(w))
                 BT_invA_B = ifelse(
-                    T.le(rcond, self.eps),
-                    T.inc_subtensor(BT_invA_B[:self.neq, :self.neq],
-                                    self.reg_coef * self.eta * (self.mu_dev ** self.beta) * T.eye(self.neq)), BT_invA_B)
+                    aet.le(rcond, self.eps),
+                    aet.inc_subtensor(BT_invA_B[:self.neq, :self.neq],
+                                    self.reg_coef * self.eta * (self.mu_dev ** self.beta) * aet.eye(self.neq)), BT_invA_B)
 
-            # calculate -Z^(-1)*g using the inverse of a block matrix 
-            v00 = T.dot(BT_invA, self.g_dev[:self.nvar + self.nineq].reshape((self.nvar + self.nineq, 1)))
+            # calculate -Z^(-1)*g using the inverse of a block matrix
+            v00 = aet.dot(BT_invA, self.g_dev[:self.nvar + self.nineq].reshape((self.nvar + self.nineq, 1)))
             v01 = sym_solve(BT_invA_B, v00)
             v02 = (self.g_dev[:self.nvar + self.nineq].reshape((self.nvar + self.nineq, 1)) / Adiag -
-                   T.dot(BT_invA.T, v01))
+                   aet.dot(BT_invA.T, v01))
             v03 = -sym_solve(BT_invA_B, self.g_dev[self.nvar + self.nineq:].reshape((self.neq + self.nineq, 1)))
-            v04 = -T.dot(BT_invA.T, v03)
-            Zg = T.concatenate([v02 + v04, v01 + v03], axis=0)
+            v04 = -aet.dot(BT_invA.T, v03)
+            Zg = aet.concatenate([v02 + v04, v01 + v03], axis=0)
 
             # construct U
-            W = T.concatenate([self.zeta_dev * self.S_dev, self.Y_dev], axis=1)
+            W = aet.concatenate([self.zeta_dev * self.S_dev, self.Y_dev], axis=1)
             if self.nineq:
-                W = T.concatenate([W, T.zeros((self.nineq, 2 * m_lbfgs))], axis=0)
+                W = aet.concatenate([W, aet.zeros((self.nineq, 2 * m_lbfgs))], axis=0)
 
             # calculate -Z^(-1)*U*(U^T*Z^(-1)*U - M)^(-1)*U^T*Z^(-1)*g (skipped if m_lbgs=0)
-            BT_gmaW = T.dot(self.B_dev.T, W) / self.zeta_dev
+            BT_gmaW = aet.dot(self.B_dev.T, W) / self.zeta_dev
             X00 = -sym_solve(BT_invA_B, BT_gmaW)
-            X01 = W / self.zeta_dev + T.dot(BT_invA.T, X00)
-            X02 = T.dot(W.T, X01)
-            M0 = T.concatenate([self.zeta_dev * self.SS_dev, self.L_dev], axis=1)
-            M1 = T.concatenate([self.L_dev.T, -self.D_dev], axis=1)
-            Minv = T.concatenate([M0, M1], axis=0)
-            v10 = T.dot(W.T, Zg[:self.nvar + self.nineq])
+            X01 = W / self.zeta_dev + aet.dot(BT_invA.T, X00)
+            X02 = aet.dot(W.T, X01)
+            M0 = aet.concatenate([self.zeta_dev * self.SS_dev, self.L_dev], axis=1)
+            M1 = aet.concatenate([self.L_dev.T, -self.D_dev], axis=1)
+            Minv = aet.concatenate([M0, M1], axis=0)
+            v10 = aet.dot(W.T, Zg[:self.nvar + self.nineq])
             v11 = sym_solve(X02 - Minv, v10)
-            X10 = T.concatenate([X01, -X00], axis=0)
-            XZg = T.dot(X10, v11)
+            X10 = aet.concatenate([X01, -X00], axis=0)
+            XZg = aet.dot(X10, v11)
 
             # combine -Z^(-1)*g and -Z^(-1)*U*(U^T*Z^(-1)*U - M)^(-1)*U^T*Z^(-1)*g
-            dz = ifelse(T.gt(m_lbfgs, 0), Zg - XZg, Zg)
+            dz = ifelse(aet.gt(m_lbfgs, 0), Zg - XZg, Zg)
         else:
             # For unconstrained problems, calculate the search direction
             #
@@ -1088,7 +1088,7 @@ class IPM:
             #     H = gma*I + |_S, gma*Y_|*| R^(-T)*(D + gma*Y^T*Y)*R^(-1), -R^(-T) |*|   S^T   |
             #                              |_             -R^(-1),               0 _| |_gma*Y^T_|
             #
-            #       = gma*I + W*Q*W.T.
+            #       = gma*I + W*Q*W.aet.
             #
             # The substitutions gma=zeta, R=L, and Y^T*Y=S^T*S are made to save variables.
 
@@ -1096,15 +1096,15 @@ class IPM:
             Hg = self.zeta_dev * self.g_dev.reshape((self.nvar, 1))
 
             # calculate -W*Q*W.T*g (skipped if m_lbfgs=0)
-            W = T.concatenate([self.S_dev, self.zeta_dev * self.Y_dev], axis=1)
-            WT_g = T.dot(W.T, self.g_dev)
+            W = aet.concatenate([self.S_dev, self.zeta_dev * self.Y_dev], axis=1)
+            WT_g = aet.dot(W.T, self.g_dev)
             B = -sym_solve(self.L_dev, WT_g[:m_lbfgs].reshape((m_lbfgs, 1)))
-            A = (-sym_solve(self.L_dev.T, T.dot(self.D_dev + self.zeta_dev * self.SS_dev, B)) -
+            A = (-sym_solve(self.L_dev.T, aet.dot(self.D_dev + self.zeta_dev * self.SS_dev, B)) -
                  sym_solve(self.L_dev.T, WT_g[m_lbfgs:].reshape((m_lbfgs, 1))))
-            Hg_update = T.dot(W, T.concatenate([A, B], axis=0))
+            Hg_update = aet.dot(W, aet.concatenate([A, B], axis=0))
 
             # combine -gma*I*g and -W*Q*W.T*g
-            dz = ifelse(T.gt(m_lbfgs, 0), Hg + Hg_update, Hg)
+            dz = ifelse(aet.gt(m_lbfgs, 0), Hg + Hg_update, Hg)
 
         if self.nvar + self.nineq == self.neq + self.nineq:
             # if constraints Jacobian is square, return both rank-deficient and full-rank search direction expressions
@@ -1151,8 +1151,8 @@ class IPM:
                 #    W = np.concatenate([zeta*S, Y], axis=1)
                 #    H[:self.nvar, :self.nvar] = (H[:self.nvar, :self.nvar] -
                 #                                 np.dot(W, self.sym_solve(Minv,
-                #                                                          W.T.reshape((W.size/self.nvar, self.nvar)))))
-                # 
+                #                                                          W.aet.reshape((W.size/self.nvar, self.nvar)))))
+                #
                 # dz = self.sym_solve(H, g.reshape((g.size,1)))
         else:
             # if problem is unconstrained
@@ -1170,7 +1170,7 @@ class IPM:
             #    M1 = np.concatenate([Ltrue.T, -D], axis=1)
             #    Minv = np.concatenate([M0, M1], axis=0)
             #    W = np.concatenate([1.0/zeta*S, Y], axis=1)
-            #    H -= np.dot(W, self.sym_solve(Minv, W.T.reshape((W.size/self.nvar, self.nvar))))
+            #    H -= np.dot(W, self.sym_solve(Minv, W.aet.reshape((W.size/self.nvar, self.nvar))))
             #
             # dz = self.sym_solve(H, g.reshape((g.size,1)))
 
@@ -1792,23 +1792,23 @@ def main():
     # be used as a safeguard.
     Ftol = 1.0E-8
 
-    # x_dev is a device vector that must be predefined by the user and is used to build theano
+    # x_dev is a device vector that must be predefined by the user and is used to build aesara
     # expressions.
-    x_dev = T.vector('x_dev')
+    x_dev = aet.vector('x_dev')
 
     # get the problem number from the command line argument list.
     prob = int(sys.argv[1])
 
-    # determine the floating-point type from the 'THEANO_FLAGS' environment variable.
-    float_dtype = os.environ.get('THEANO_FLAGS')
+    # determine the floating-point type from the 'aesara_FLAGS' environment variable.
+    float_dtype = os.environ.get('aesara_FLAGS')
     if float_dtype is not None:
         try:
             float_dtype = float_dtype.split('floatX=')[1]
         except IndexError:
-            raise Exception('Error: attribute "floatX" not defined in "THEANO_FLAGS" environment variable.')
+            raise Exception('Error: attribute "floatX" not defined in "aesara_FLAGS" environment variable.')
         float_dtype = float_dtype.split(',')[0]
     else:
-        raise Exception('Error: "THEANO_FLAGS" environment variable is unset.')
+        raise Exception('Error: "aesara_FLAGS" environment variable is unset.')
     if float_dtype.strip() == 'float32':
         float_dtype = np.float32
     else:
@@ -1851,8 +1851,8 @@ def main():
         print('')
         x0 = np.random.randn(2).astype(float_dtype)
 
-        f = -T.sum(x_dev)
-        ce = T.sum(x_dev ** 2) - 1.0
+        f = -aet.sum(x_dev)
+        ce = aet.sum(x_dev ** 2) - 1.0
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ce=ce, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype, verbosity=verbosity)
         x, s, lda, fval, kkt = p.solve()
@@ -1869,7 +1869,7 @@ def main():
         x0 = np.random.randn(2).astype(float_dtype)
 
         f = -(x_dev[0] ** 2) * x_dev[1]
-        ce = T.sum(x_dev ** 2) - 3.0
+        ce = aet.sum(x_dev ** 2) - 3.0
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ce=ce, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype, verbosity=verbosity)
         x, s, lda, fval, kkt = p.solve()
@@ -1890,10 +1890,10 @@ def main():
         x0 = np.random.randn(2).astype(float_dtype)
 
         f = x_dev[0] ** 2 + 2.0 * x_dev[1] ** 2 + 2.0 * x_dev[0] + 8.0 * x_dev[1]
-        ci = T.zeros((3,))
-        ci = T.set_subtensor(ci[0], x_dev[0] + 2.0 * x_dev[1] - 10.0)
-        ci = T.set_subtensor(ci[1], x_dev[0])
-        ci = T.set_subtensor(ci[2], x_dev[1])
+        ci = aet.zeros((3,))
+        ci = aet.set_subtensor(ci[0], x_dev[0] + 2.0 * x_dev[1] - 10.0)
+        ci = aet.set_subtensor(ci[1], x_dev[0])
+        ci = aet.set_subtensor(ci[2], x_dev[1])
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ci=ci, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype, verbosity=verbosity)
         x, s, lda, fval, kkt = p.solve()
@@ -1912,8 +1912,8 @@ def main():
         x0 = np.random.rand(6).astype(float_dtype)
         x0 = x0 / np.sum(x0)
 
-        f = T.sum(x_dev * T.log(x_dev + np.finfo(float_dtype).eps))
-        ce = T.sum(x_dev) - 1.0
+        f = aet.sum(x_dev * aet.log(x_dev + np.finfo(float_dtype).eps))
+        ce = aet.sum(x_dev) - 1.0
         ci = 1.0 * x_dev
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ce=ce, ci=ci, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype,
@@ -1933,7 +1933,7 @@ def main():
         x0 = np.random.randn(3).astype(float_dtype)
 
         f = -x_dev[0] * x_dev[1] * x_dev[2]
-        ce = T.sum(x_dev) - 1.0
+        ce = aet.sum(x_dev) - 1.0
         ci = 1.0 * x_dev
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ce=ce, ci=ci, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype,
@@ -1953,9 +1953,9 @@ def main():
         x0 = np.random.randn(3).astype(float_dtype)
 
         f = 4.0 * x_dev[1] - 2.0 * x_dev[2]
-        ce = T.zeros((2,))
-        ce = T.set_subtensor(ce[0], 2.0 * x_dev[0] - x_dev[1] - x_dev[2] - 2.0)
-        ce = T.set_subtensor(ce[1], x_dev[0] ** 2 + x_dev[1] ** 2 - 1.0)
+        ce = aet.zeros((2,))
+        ce = aet.set_subtensor(ce[0], 2.0 * x_dev[0] - x_dev[1] - x_dev[2] - 2.0)
+        ce = aet.set_subtensor(ce[1], x_dev[0] ** 2 + x_dev[1] ** 2 - 1.0)
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ce=ce, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype, verbosity=verbosity)
         x, s, lda, fval, kkt = p.solve()
@@ -1976,9 +1976,9 @@ def main():
         x0 = np.random.randn(2).astype(float_dtype)
 
         f = (x_dev[0] - 2.0) ** 2 + 2.0 * (x_dev[1] - 1.0) ** 2
-        ci = T.zeros(2)
-        ci = T.set_subtensor(ci[0], -x_dev[0] - 4.0 * x_dev[1] + 3.0)
-        ci = T.set_subtensor(ci[1], x_dev[0] - x_dev[1])
+        ci = aet.zeros(2)
+        ci = aet.set_subtensor(ci[0], -x_dev[0] - 4.0 * x_dev[1] + 3.0)
+        ci = aet.set_subtensor(ci[1], x_dev[0] - x_dev[1])
 
         p = IPM(x0=x0, x_dev=x_dev, f=f, ci=ci, Ftol=Ftol, lbfgs=lbfgs, float_dtype=float_dtype, verbosity=verbosity)
         x, s, lda, fval, kkt = p.solve()

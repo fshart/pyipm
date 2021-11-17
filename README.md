@@ -12,17 +12,15 @@ inequality constraints, {ci}. PYIPM uses a line search interior-point
 method to search for an x that is a feasible local minimizer of a
 user-defined nonlinear program.
 
-## Shift to Theano-PyMC
+## Shift to aesara
 
 Originally, this module used the Theano library maintained by the
 Montreal Institute for Learning Algorithms. The original version of
 Theano was deprecated in 2017. Fortunately, the PyMC team has taken
 over maintenance of Theano in a fork called
-[Theano-PyMC](https://github.com/pymc-devs/Theano-PyMC). The install
-script (setup.py) now installs Theano-PyMC instead of Theano as a
-dependency. That said, this module is still compatible with deprecated
-Theano so you may choose to continue using deprecated Theano (at least
-as long as your architecture can still run it).
+[aesara](https://github.com/aesara-devs/aesara). The install
+script (setup.py) now installs aesara instead of Theano as a
+dependency.
 
 ## Getting Started
 
@@ -35,14 +33,14 @@ Using PYIPM requires either a python 3 or python 2.7 interpreter. In
 addition to having python installed, the following packages are
 required:
 
-    NumPy, SciPy, Theano-PyMC
+    NumPy, SciPy, aesara
 
 Theano is used to speed up the code execution through parallelization
 and compilations of certain functions used in PYIPM. Furthermore,
 Theano makes it possible to perform many of largest steps in the
 algorithm on graphics processing units (GPUs). For information on
 using the GPUs, see the Theano documentation at
-http://deeplearning.net/software/theano/.
+https://aesara.readthedocs.io/en/latest/.
 
 All of the above required packages may be installed through pip.
 
@@ -180,7 +178,7 @@ to generate expressions for the gradients, df, dce, and dci, and, if
 the exact Hessian is being used, the Hessians, d2f, d2ce, and
 d2ci. Unfortunately, once these expressions are compiled, they cannot
 be used for symbolic differentiation. That is not to say, however,
-that you cannot use theano.function() to precompile your expressions
+that you cannot use aesara.function() to precompile your expressions
 into functions. You can do that at your own convenience so long as you
 provide your own symbolic expressions or functions for df, dce, and
 dci and, if applicable, d2f, d2ce, and d2ci. It is worth pointing out,
@@ -219,17 +217,9 @@ it to 0 or False.
 For a more thorough guide to the parameters and public class
 functions, see the docstring of class IPM in pyipm.py. For more
 information about how to build and compile expressions, see the Theano
-documentation at http://deeplearning.net/software/theano/.
+documentation at https://aesara.readthedocs.io/en/latest/.
 
-# Contributing, help, bug reporting, etc.
-
-For help, comments, suggestions, bug reports, or if you are interested
-in contributing, please feel free to leave a message at
-https://github.com/jkaardal/pyipm.
-
-Thank you for your interest!
-
-# Authors
+# Authors of original
 
 Joel T. Kaardal (https://github.com/jkaardal)
 

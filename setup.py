@@ -4,8 +4,8 @@ except ImportError:
     from distutils.core	import setup
 
 """ To install package pyipm and its dependencies, run:
-                                                                                             
-        python setup.py install                                                                                             
+
+        python setup.py install
 """
 
 setup(name='pyipm',
@@ -18,5 +18,5 @@ setup(name='pyipm',
       install_requires=[
           'numpy>=1.7.1',
           'scipy>=0.11',
-          'Theano-PyMC>=1.0.13',
+          'aesara>=2.2.6',
       ])

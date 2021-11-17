@@ -1,7 +1,7 @@
 from __future__ import print_function
 
-import theano
-import theano.tensor as T
+import aesara
+import aesara.tensor as aet
 import numpy as np
 from pyipm import IPM
 
@@ -29,7 +29,7 @@ def make_str(state, comp, m):
     string = []
     for i in range(len(state)):
         if state[i] == comp and (not m or not text_abbr[i].startswith('d2')):
-            string.append(text_abbr[i])   
+            string.append(text_abbr[i])
     return ','.join(string)
 
 
@@ -38,7 +38,7 @@ def make_text_state(state, m):
     for comp in state_types:
         substring = make_str(state, comp, m)
         string.append(substring.center(text_width))
-    return '|'.join(string) 
+    return '|'.join(string)
 
 
 if __name__ == '__main__':
@@ -49,8 +49,8 @@ if __name__ == '__main__':
     Ftol = 1.0E-8
     Stol = 1.0E-3
 
-    x_dev = T.vector('x_dev')
-    lambda_dev = T.vector('lda_dev')
+    x_dev = aet.vector('x_dev')
+    lambda_dev = aet.vector('lda_dev')
 
     print('Testing unconstrained problems...')
 
@@ -121,8 +121,8 @@ if __name__ == '__main__':
 
     p3 = dict()
     p3['text_statements'] = ['maximize f(x, y) = x + y subject to x**2 + y**2 = 1']
-    p3['f'] = -T.sum(x_dev)
-    p3['ce'] = T.sum(x_dev ** 2) - 1.0
+    p3['f'] = -aet.sum(x_dev)
+    p3['ce'] = aet.sum(x_dev ** 2) - 1.0
     p3['neq'] = 1
     p3['ci'] = None
     p3['nineq'] = 0
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     p4 = dict()
     p4['text_statements'] = ['maximize f(x, y) = (x**2)*y subject to x**2 + y**2 = 3']
     p4['f'] = -(x_dev[0] ** 2) * x_dev[1]
-    p4['ce'] = T.sum(x_dev ** 2) - 3.0
+    p4['ce'] = aet.sum(x_dev ** 2) - 3.0
     p4['neq'] = 1
     p4['ci'] = None
     p4['nineq'] = 0
@@ -153,10 +153,10 @@ if __name__ == '__main__':
     p5['f'] = x_dev[0] ** 2 + 2.0 * x_dev[1] ** 2 + 2.0 * x_dev[0] + 8.0 * x_dev[1]
     p5['ce'] = None
     p5['neq'] = 0
-    ci = T.zeros((3,))
-    ci = T.set_subtensor(ci[0], x_dev[0] + 2.0 * x_dev[1] - 10.0)
-    ci = T.set_subtensor(ci[1], x_dev[0])
-    ci = T.set_subtensor(ci[2], x_dev[1])
+    ci = aet.zeros((3,))
+    ci = aet.set_subtensor(ci[0], x_dev[0] + 2.0 * x_dev[1] - 10.0)
+    ci = aet.set_subtensor(ci[1], x_dev[0])
+    ci = aet.set_subtensor(ci[2], x_dev[1])
     p5['ci'] = ci
     p5['nineq'] = 3
     p5['init'] = np.random.randn(2).astype(float_dtype)
@@ -169,8 +169,8 @@ if __name__ == '__main__':
         'Find the maximum entropy distribution of a six-sided die:',
         'maximize f(x) = -sum(x*log(x)) subject to sum(x) = 1 and x >= 0 (x.size == 6)'
     ]
-    p6['f'] = T.sum(x_dev * T.log(x_dev + np.finfo(float_dtype).eps))
-    p6['ce'] = T.sum(x_dev) - 1.0
+    p6['f'] = aet.sum(x_dev * aet.log(x_dev + np.finfo(float_dtype).eps))
+    p6['ce'] = aet.sum(x_dev) - 1.0
     p6['neq'] = 1
     p6['ci'] = 1.0 * x_dev
     p6['nineq'] = 6
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     p7 = dict()
     p7['text_statements'] = ['maximize f(x, y, z) = x*y*z subject to x + y + z = 1, x >= 0, y >= 0, z >= 0']
     p7['f'] = -x_dev[0] * x_dev[1] * x_dev[2]
-    p7['ce'] = T.sum(x_dev) - 1.0
+    p7['ce'] = aet.sum(x_dev) - 1.0
     p7['neq'] = 1
     p7['ci'] = 1.0 * x_dev
     p7['nineq'] = 3
@@ -194,9 +194,9 @@ if __name__ == '__main__':
     p8 = dict()
     p8['text_statements'] = ['minimize f(x, y, z) = 4*x - 2*z subject to 2*x - y - z = 2, x**2 + y**2 = 1']
     p8['f'] = 4.0 * x_dev[1] - 2.0 * x_dev[2]
-    ce = T.zeros((2,))
-    ce = T.set_subtensor(ce[0], 2.0 * x_dev[0] - x_dev[1] - x_dev[2] - 2.0)
-    ce = T.set_subtensor(ce[1], x_dev[0] ** 2 + x_dev[1] ** 2 - 1.0)
+    ce = aet.zeros((2,))
+    ce = aet.set_subtensor(ce[0], 2.0 * x_dev[0] - x_dev[1] - x_dev[2] - 2.0)
+    ce = aet.set_subtensor(ce[1], x_dev[0] ** 2 + x_dev[1] ** 2 - 1.0)
     p8['ce'] = ce
     p8['neq'] = 2
     p8['ci'] = None
@@ -212,9 +212,9 @@ if __name__ == '__main__':
     p9['f'] = (x_dev[0] - 2.0) ** 2 + 2.0 * (x_dev[1] - 1.0) ** 2
     p9['ce'] = None
     p9['neq'] = 0
-    ci = T.zeros(2)
-    ci = T.set_subtensor(ci[0], -x_dev[0] - 4.0 * x_dev[1] + 3.0)
-    ci = T.set_subtensor(ci[1], x_dev[0] - x_dev[1])
+    ci = aet.zeros(2)
+    ci = aet.set_subtensor(ci[0], -x_dev[0] - 4.0 * x_dev[1] + 3.0)
+    ci = aet.set_subtensor(ci[1], x_dev[0] - x_dev[1])
     p9['ci'] = ci
     p9['nineq'] = 2
     p9['init'] = np.random.randn(2).astype(float_dtype)
@@ -277,7 +277,7 @@ if __name__ == '__main__':
                     pass
                 elif (not lbfgs and blist[0] != 'EXACT') or (lbfgs and blist[0] != 'LBFGS'):
                     continue
-                
+
                 for j in range(len(blist)-1):
                     if state[j] == blist[j + 1]:
                         match = True
@@ -319,10 +319,10 @@ if __name__ == '__main__':
                     if state[1] == 'auto-diff':
                         df = None
                     elif state[1] == 'expression':
-                        df = T.grad(f, x_dev)
+                        df = aet.grad(f, x_dev)
                     else:
-                        df = T.grad(f, x_dev)
-                        df = theano.function(inputs=[x_dev], outputs=df)
+                        df = aet.grad(f, x_dev)
+                        df = aesara.function(inputs=[x_dev], outputs=df)
 
                     if lbfgs:
                         d2f = None
@@ -330,13 +330,13 @@ if __name__ == '__main__':
                         if state[2] == 'auto-diff':
                             d2f = None
                         elif state[2] == 'expression':
-                            d2f = theano.gradient.hessian(cost=f, wrt=x_dev)
+                            d2f = aesara.gradient.hessian(cost=f, wrt=x_dev)
                         else:
-                            d2f = theano.gradient.hessian(cost=f, wrt=x_dev)
-                            d2f = theano.function(inputs=[x_dev], outputs=d2f)
+                            d2f = aesara.gradient.hessian(cost=f, wrt=x_dev)
+                            d2f = aesara.function(inputs=[x_dev], outputs=d2f)
 
                     if state[0] == 'precompiled':
-                        f = theano.function(inputs=[x_dev], outputs=f)
+                        f = aesara.function(inputs=[x_dev], outputs=f)
 
                     if problem['ce'] is not None:
                         ce = problem['ce']
@@ -344,10 +344,10 @@ if __name__ == '__main__':
                         if state[4] == 'auto-diff':
                             dce = None
                         elif state[4] == 'expression':
-                            dce = theano.gradient.jacobian(ce, wrt=x_dev).reshape((problem['neq'], x0.size)).T
+                            dce = aesara.gradient.jacobian(ce, wrt=x_dev).reshape((problem['neq'], x0.size)).T
                         else:
-                            dce = theano.gradient.jacobian(ce, wrt=x_dev).reshape((problem['neq'], x0.size)).T
-                            dce = theano.function(inputs=[x_dev], outputs=dce)
+                            dce = aesara.gradient.jacobian(ce, wrt=x_dev).reshape((problem['neq'], x0.size)).T
+                            dce = aesara.function(inputs=[x_dev], outputs=dce)
 
                         if lbfgs:
                             d2ce = None
@@ -355,13 +355,13 @@ if __name__ == '__main__':
                             if state[5] == 'auto-diff':
                                 d2ce = None
                             elif state[5] == 'expression':
-                                d2ce = theano.gradient.hessian(cost=T.sum(ce * lambda_dev[:problem['neq']]), wrt=x_dev)
+                                d2ce = aesara.gradient.hessian(cost=aet.sum(ce * lambda_dev[:problem['neq']]), wrt=x_dev)
                             else:
-                                d2ce = theano.gradient.hessian(cost=T.sum(ce * lambda_dev[:problem['neq']]), wrt=x_dev)
-                                d2ce = theano.function(inputs=[x_dev, lambda_dev], outputs=d2ce)
+                                d2ce = aesara.gradient.hessian(cost=aet.sum(ce * lambda_dev[:problem['neq']]), wrt=x_dev)
+                                d2ce = aesara.function(inputs=[x_dev, lambda_dev], outputs=d2ce)
 
                         if state[3] == 'precompiled':
-                            ce = theano.function(inputs=[x_dev], outputs=ce)
+                            ce = aesara.function(inputs=[x_dev], outputs=ce)
                     else:
                         ce = None
                         dce = None
@@ -373,10 +373,10 @@ if __name__ == '__main__':
                         if state[7] == 'auto-diff':
                             dci = None
                         elif state[7] == 'expression':
-                            dci = theano.gradient.jacobian(ci, wrt=x_dev).reshape((problem['nineq'], x0.size)).T
+                            dci = aesara.gradient.jacobian(ci, wrt=x_dev).reshape((problem['nineq'], x0.size)).T
                         else:
-                            dci = theano.gradient.jacobian(ci, wrt=x_dev).reshape((problem['nineq'], x0.size)).T
-                            dci = theano.function(inputs=[x_dev], outputs=dci)
+                            dci = aesara.gradient.jacobian(ci, wrt=x_dev).reshape((problem['nineq'], x0.size)).T
+                            dci = aesara.function(inputs=[x_dev], outputs=dci)
 
                         if lbfgs:
                             d2ci = None
@@ -384,13 +384,13 @@ if __name__ == '__main__':
                             if state[8] == 'auto-diff':
                                 d2ci = None
                             elif state[8] == 'expression':
-                                d2ci = theano.gradient.hessian(cost=T.sum(ci * lambda_dev[problem['neq']:]), wrt=x_dev)
+                                d2ci = aesara.gradient.hessian(cost=aet.sum(ci * lambda_dev[problem['neq']:]), wrt=x_dev)
                             else:
-                                d2ci = theano.gradient.hessian(cost=T.sum(ci * lambda_dev[problem['neq']:]), wrt=x_dev)
-                                d2ci = theano.function(inputs=[x_dev, lambda_dev], outputs=d2ci)
+                                d2ci = aesara.gradient.hessian(cost=aet.sum(ci * lambda_dev[problem['neq']:]), wrt=x_dev)
+                                d2ci = aesara.function(inputs=[x_dev, lambda_dev], outputs=d2ci)
 
                         if state[6] == 'precompiled':
-                            ci = theano.function(inputs=[x_dev], outputs=ci)
+                            ci = aesara.function(inputs=[x_dev], outputs=ci)
                     else:
                         ci = None
                         dci = None
