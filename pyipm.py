@@ -791,7 +791,7 @@ class IPM:
         # gen_solve = aet.slinalg.solve(self.M_dev, self.b_dev)
 
         # construct expression for symmetric linear system solve
-        sym_solve = aet.slinalg.Solve(A_structure='symmetric')
+        sym_solve = aet.slinalg.Solve(assume_a='sym')
         sym_solve = sym_solve(self.M_dev, self.b_dev)
 
         # if using L-BFGS, get the expression for the descent direction
@@ -977,7 +977,7 @@ class IPM:
         # get the current number of L-BFGS updates
         m_lbfgs = self.S_dev.shape[1]
 
-        sym_solve = aet.slinalg.Solve(A_structure='symmetric')
+        sym_solve = aet.slinalg.Solve(assume_a='sym')
 
         if self.neq or self.nineq:
             # For constrained problems, the search direction is
